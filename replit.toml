@@ -1,9 +1,9 @@
 [run]
-command = "./start-simple.sh"
+command = "node build-esbuild.cjs && npx live-server dist-esbuild --host=0.0.0.0 --port=5000 --cors --no-browser"
 
 [deployment]
-run = ["npm", "run", "build"]
-build = ["npm", "run", "build"]
+run = ["node", "build-esbuild.cjs"]
+build = ["node", "build-esbuild.cjs"]
 deploymentTarget = "gce"
 
 [env]

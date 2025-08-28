@@ -1,0 +1,17 @@
+[run]
+command = "./start-simple.sh"
+
+[deployment]
+run = ["npm", "run", "build"]
+build = ["npm", "run", "build"]
+deploymentTarget = "gce"
+
+[env]
+NODE_ENV = "development"
+
+[[ports]]
+localPort = 5000
+externalPort = 80
+
+[nix]
+channel = "stable-24_05"

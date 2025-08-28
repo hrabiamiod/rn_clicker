@@ -1,0 +1,17 @@
+[run]
+command = "./start-parcel.sh"
+
+[deployment]
+run = ["npx", "parcel", "build", "client/index.html", "--dist-dir", "dist-parcel"]
+build = ["npx", "parcel", "build", "client/index.html", "--dist-dir", "dist-parcel"]
+deploymentTarget = "gce"
+
+[env]
+NODE_ENV = "development"
+
+[[ports]]
+localPort = 5000
+externalPort = 80
+
+[nix]
+channel = "stable-24_05"
