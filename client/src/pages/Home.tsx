@@ -5,15 +5,23 @@ import ListingsGrid from '@/components/ListingsGrid';
 import Footer from '@/components/Footer';
 import AddListingModal from '@/components/AddListingModal';
 
+interface Filters {
+  categoryId?: number;
+  location: string;
+  minPrice?: number;
+  maxPrice?: number;
+  sortBy: 'newest' | 'oldest' | 'price_asc' | 'price_desc';
+}
+
 export default function Home() {
   const [showAddListingModal, setShowAddListingModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filters, setFilters] = useState({
-    categoryId: undefined as number | undefined,
+  const [filters, setFilters] = useState<Filters>({
+    categoryId: undefined,
     location: '',
-    minPrice: undefined as number | undefined,
-    maxPrice: undefined as number | undefined,
-    sortBy: 'newest' as 'newest' | 'oldest' | 'price_asc' | 'price_desc',
+    minPrice: undefined,
+    maxPrice: undefined,
+    sortBy: 'newest',
   });
 
   return (
