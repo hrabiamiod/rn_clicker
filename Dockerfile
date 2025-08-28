@@ -13,14 +13,17 @@ COPY tailwind.config.ts ./
 COPY postcss.config.js ./
 COPY drizzle.config.ts ./
 
-# 📦 Stage: Zależności
+# 📦 Stage: Zależności produkcyjne
 FROM base AS deps
 RUN npm ci --only=production && npm cache clean --force
 
-# 🔧 Stage: Builder
-FROM base AS builder
-COPY . .
+# 📦 Stage: Wszystkie zależności (dla buildera)
+FROM base AS deps-full
 RUN npm ci
+
+# 🔧 Stage: Builder
+FROM deps-full AS builder
+COPY . .
 
 # Zbuduj backend
 RUN npm run build
