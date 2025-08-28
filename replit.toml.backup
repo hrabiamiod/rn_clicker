@@ -1,5 +1,5 @@
 [run]
-command = "./start-simple.sh"
+command = "npm run dev"
 
 [deployment]
 run = ["npm", "run", "build"]
