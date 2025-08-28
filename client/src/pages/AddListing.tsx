@@ -3,6 +3,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Link, useLocation } from 'wouter';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useState } from 'react';
 import {
   Form,
   FormControl,
@@ -26,7 +28,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { insertListingSchema, Category } from '@shared/schema';
 import { apiRequest } from '@/lib/queryClient';
-import { Loader2, ArrowLeft, Shield } from 'lucide-react';
+import { Loader2, ArrowLeft, Shield, Check, Sparkles, Zap } from 'lucide-react';
 
 const formSchema = insertListingSchema.extend({
   price: z.string().optional().refine((val) => {
@@ -43,6 +45,8 @@ export default function AddListing() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [, navigate] = useLocation();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
 
   const { data: categories, isLoading: categoriesLoading } = useQuery({
     queryKey: ['/api/categories'],
@@ -62,27 +66,36 @@ export default function AddListing() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: FormData) => {
+    mutationFn: async (data: FormData) => {
+      setIsSubmitting(true);
       const payload = {
         ...data,
         price: data.price ? parseFloat(data.price).toString() : undefined,
       };
+      // Add slight delay for better animation experience
+      await new Promise(resolve => setTimeout(resolve, 1200));
       return apiRequest('/api/listings', {
         method: 'POST',
         body: JSON.stringify(payload),
       });
     },
     onSuccess: (data) => {
-      toast({
-        title: 'Sukces!',
-        description: 'Ogłoszenie zostało dodane i oczekuje na moderację.',
-      });
+      setShowSuccess(true);
       queryClient.invalidateQueries({ queryKey: ['/api/listings'] });
-      navigate(`/listing/${data.id}`);
+      
+      // Show success animation, then navigate
+      setTimeout(() => {
+        toast({
+          title: '🎉 Fantastycznie!',
+          description: 'Twoje ogłoszenie zostało dodane i jest przetwarzane.',
+        });
+        navigate(`/listing/${data.id}`);
+      }, 2000);
     },
     onError: (error: any) => {
+      setIsSubmitting(false);
       toast({
-        title: 'Błąd',
+        title: '❌ Coś poszło nie tak',
         description: error.message || 'Nie udało się dodać ogłoszenia. Spróbuj ponownie.',
         variant: 'destructive',
       });
@@ -111,9 +124,68 @@ export default function AddListing() {
   };
 
   return (
-    <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 relative">
+      {/* Success Overlay */}
+      <AnimatePresence>
+        {showSuccess && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-background/95 backdrop-blur-sm flex items-center justify-center z-50"
+          >
+            <motion.div
+              initial={{ scale: 0.8, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              className="text-center p-8"
+            >
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: 0.3, type: "spring", stiffness: 200 }}
+                className="inline-flex items-center justify-center w-20 h-20 bg-green-100 dark:bg-green-900/20 rounded-full mb-6"
+              >
+                <Check className="h-10 w-10 text-green-600 dark:text-green-400" />
+              </motion.div>
+              <motion.h2
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 }}
+                className="text-2xl font-bold text-green-700 dark:text-green-400 mb-4"
+              >
+                Ogłoszenie dodane! 🎉
+              </motion.h2>
+              <motion.p
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.6 }}
+                className="text-muted-foreground mb-6"
+              >
+                Twoje ogłoszenie zostało przesłane do moderacji i będzie wkrótce opublikowane.
+              </motion.p>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.7 }}
+                className="flex items-center justify-center space-x-2"
+              >
+                <Zap className="h-5 w-5 text-yellow-500 animate-pulse" />
+                <span className="text-sm font-medium">Przekierowywanie...</span>
+              </motion.div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Header */}
-      <div className="mb-8">
+      <motion.div 
+        className="mb-8"
+        animate={{
+          filter: isSubmitting ? 'blur(1px)' : 'blur(0px)',
+          opacity: isSubmitting ? 0.6 : 1,
+        }}
+        transition={{ duration: 0.3 }}
+      >
         <Link href="/">
           <Button variant="ghost" className="mb-4">
             <ArrowLeft className="mr-2 h-4 w-4" />
@@ -126,9 +198,16 @@ export default function AddListing() {
           Wypełnij formularz poniżej, aby dodać swoje ogłoszenie. 
           Zostanie ono zweryfikowane przed publikacją.
         </p>
-      </div>
+      </motion.div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <motion.div 
+        className="grid grid-cols-1 lg:grid-cols-3 gap-8"
+        animate={{
+          filter: isSubmitting ? 'blur(1px)' : 'blur(0px)',
+          opacity: isSubmitting ? 0.6 : 1,
+        }}
+        transition={{ duration: 0.3 }}
+      >
         {/* Main Form */}
         <div className="lg:col-span-2">
           <Card>
@@ -294,16 +373,59 @@ export default function AddListing() {
                         Anuluj
                       </Button>
                     </Link>
-                    <Button
-                      data-testid="button-submit"
-                      type="submit"
-                      disabled={createMutation.isPending}
+                    <motion.div
+                      whileHover={{ scale: isSubmitting ? 1 : 1.02 }}
+                      whileTap={{ scale: isSubmitting ? 1 : 0.98 }}
                     >
-                      {createMutation.isPending && (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      )}
-                      Dodaj ogłoszenie
-                    </Button>
+                      <Button
+                        data-testid="button-submit"
+                        type="submit"
+                        disabled={isSubmitting}
+                        className="relative overflow-hidden"
+                      >
+                        <AnimatePresence mode="wait">
+                          {isSubmitting ? (
+                            <motion.div
+                              key="loading"
+                              initial={{ opacity: 0, x: 20 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              exit={{ opacity: 0, x: -20 }}
+                              className="flex items-center"
+                            >
+                              <motion.div
+                                animate={{ rotate: 360 }}
+                                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                                className="mr-2"
+                              >
+                                <Loader2 className="h-4 w-4" />
+                              </motion.div>
+                              Przetwarzanie...
+                            </motion.div>
+                          ) : (
+                            <motion.div
+                              key="default"
+                              initial={{ opacity: 0, x: 20 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              exit={{ opacity: 0, x: -20 }}
+                              className="flex items-center"
+                            >
+                              <Sparkles className="mr-2 h-4 w-4" />
+                              Dodaj ogłoszenie
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                        
+                        {/* Loading Background Animation */}
+                        {isSubmitting && (
+                          <motion.div
+                            initial={{ x: '-100%' }}
+                            animate={{ x: '100%' }}
+                            transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+                            className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+                          />
+                        )}
+                      </Button>
+                    </motion.div>
                   </div>
                 </form>
               </Form>
@@ -387,7 +509,7 @@ export default function AddListing() {
             </CardContent>
           </Card>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Dialog,
   DialogContent,
@@ -30,7 +31,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { insertListingSchema, Category } from '@shared/schema';
 import { apiRequest } from '@/lib/queryClient';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Check, Sparkles } from 'lucide-react';
 
 const formSchema = insertListingSchema.extend({
   price: z.string().optional().refine((val) => {
@@ -48,6 +49,8 @@ interface AddListingModalProps {
 }
 
 export default function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -70,28 +73,39 @@ export default function AddListingModal({ isOpen, onClose }: AddListingModalProp
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: FormData) => {
+    mutationFn: async (data: FormData) => {
+      setIsSubmitting(true);
       const payload = {
         ...data,
         price: data.price ? parseFloat(data.price).toString() : undefined,
       };
+      // Add slight delay for better animation experience
+      await new Promise(resolve => setTimeout(resolve, 800));
       return apiRequest('/api/listings', {
         method: 'POST',
         body: JSON.stringify(payload),
       });
     },
     onSuccess: () => {
-      toast({
-        title: 'Sukces!',
-        description: 'Ogłoszenie zostało dodane i oczekuje na moderację.',
-      });
+      setShowSuccess(true);
       queryClient.invalidateQueries({ queryKey: ['/api/listings'] });
-      form.reset();
-      onClose();
+      
+      // Show success animation, then close
+      setTimeout(() => {
+        toast({
+          title: '🎉 Świetnie!',
+          description: 'Twoje ogłoszenie zostało dodane i oczekuje na moderację.',
+        });
+        form.reset();
+        setShowSuccess(false);
+        setIsSubmitting(false);
+        onClose();
+      }, 1500);
     },
     onError: (error: any) => {
+      setIsSubmitting(false);
       toast({
-        title: 'Błąd',
+        title: '❌ Ops!',
         description: error.message || 'Nie udało się dodać ogłoszenia. Spróbuj ponownie.',
         variant: 'destructive',
       });
@@ -104,13 +118,72 @@ export default function AddListingModal({ isOpen, onClose }: AddListingModalProp
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto relative">
         <DialogHeader>
           <DialogTitle>Dodaj nowe ogłoszenie</DialogTitle>
         </DialogHeader>
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        {/* Success Overlay */}
+        <AnimatePresence>
+          {showSuccess && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              className="absolute inset-0 bg-background/95 backdrop-blur-sm flex items-center justify-center z-50 rounded-lg"
+            >
+              <motion.div
+                initial={{ y: 20 }}
+                animate={{ y: 0 }}
+                className="text-center"
+              >
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+                  className="inline-flex items-center justify-center w-16 h-16 bg-green-100 dark:bg-green-900/20 rounded-full mb-4"
+                >
+                  <Check className="h-8 w-8 text-green-600 dark:text-green-400" />
+                </motion.div>
+                <motion.h3
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.4 }}
+                  className="text-lg font-semibold text-green-700 dark:text-green-400 mb-2"
+                >
+                  Gotowe! 🎉
+                </motion.h3>
+                <motion.p
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.5 }}
+                  className="text-muted-foreground"
+                >
+                  Twoje ogłoszenie zostało dodane
+                </motion.p>
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.6 }}
+                  className="flex items-center justify-center mt-4"
+                >
+                  <Sparkles className="h-5 w-5 text-yellow-500 mr-2 animate-pulse" />
+                  <span className="text-sm text-muted-foreground">Oczekuje na moderację</span>
+                </motion.div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <motion.div
+          animate={{
+            filter: isSubmitting ? 'blur(1px)' : 'blur(0px)',
+            opacity: isSubmitting ? 0.7 : 1,
+          }}
+          transition={{ duration: 0.3 }}
+        >
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
               control={form.control}
               name="categoryId"
@@ -268,23 +341,67 @@ export default function AddListingModal({ isOpen, onClose }: AddListingModalProp
                 type="button"
                 variant="outline"
                 onClick={onClose}
-                disabled={createMutation.isPending}
+                disabled={isSubmitting}
               >
                 Anuluj
               </Button>
-              <Button
-                data-testid="button-submit"
-                type="submit"
-                disabled={createMutation.isPending}
+              <motion.div
+                whileHover={{ scale: isSubmitting ? 1 : 1.02 }}
+                whileTap={{ scale: isSubmitting ? 1 : 0.98 }}
               >
-                {createMutation.isPending && (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                )}
-                Dodaj ogłoszenie
-              </Button>
+                <Button
+                  data-testid="button-submit"
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="relative overflow-hidden"
+                >
+                  <AnimatePresence mode="wait">
+                    {isSubmitting ? (
+                      <motion.div
+                        key="loading"
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -20 }}
+                        className="flex items-center"
+                      >
+                        <motion.div
+                          animate={{ rotate: 360 }}
+                          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                          className="mr-2"
+                        >
+                          <Loader2 className="h-4 w-4" />
+                        </motion.div>
+                        Wysyłanie...
+                      </motion.div>
+                    ) : (
+                      <motion.div
+                        key="default"
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -20 }}
+                        className="flex items-center"
+                      >
+                        <Sparkles className="mr-2 h-4 w-4" />
+                        Dodaj ogłoszenie
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                  
+                  {/* Loading Background Animation */}
+                  {isSubmitting && (
+                    <motion.div
+                      initial={{ x: '-100%' }}
+                      animate={{ x: '100%' }}
+                      transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+                      className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+                    />
+                  )}
+                </Button>
+              </motion.div>
             </div>
           </form>
         </Form>
+        </motion.div>
       </DialogContent>
     </Dialog>
   );
