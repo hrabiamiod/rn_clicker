@@ -263,7 +263,7 @@ export class DatabaseStorage implements IStorage {
         const images = await db
           .select()
           .from(listingImages)
-          .where(eq(listingImages.listingId, listing.id))
+          .where(eq(listingImages.listingId, listing.id!))
           .orderBy(listingImages.sortOrder);
 
         return {
@@ -349,7 +349,7 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(listings)
       .where(and(eq(listings.id, id), eq(listings.userId, userId)));
-    return result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 
   async incrementViewCount(id: number): Promise<void> {
@@ -386,7 +386,7 @@ export class DatabaseStorage implements IStorage {
     const result = await db
       .delete(listingImages)
       .where(and(eq(listingImages.id, id), eq(listingImages.listingId, listingId)));
-    return result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 
   // Favorites operations
