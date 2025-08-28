@@ -5,6 +5,7 @@ import { createServer as createViteServer, createLogger } from "vite";
 import { type Server } from "http";
 import viteConfig from "../vite.config";
 import { nanoid } from "nanoid";
+import react from "@vitejs/plugin-react";
 
 const viteLogger = createLogger();
 
@@ -58,6 +59,19 @@ export async function setupVite(app: Express, server: Server) {
         `src="/src/main.tsx"`,
         `src="/src/main.tsx?v=${nanoid()}"`,
       );
+
+      // ensure the React refresh preamble is present; this prevents
+      // "@vitejs/plugin-react can't detect preamble" errors when the
+      // template is served through our custom middleware instead of
+      // Vite's default HTML handling
+      const preamble = `<script type="module">${react.preambleCode.replace(
+        "__BASE__",
+        vite.config.base ?? "/",
+      )}</script>`;
+      if (!template.includes("__vite_plugin_react_preamble_installed__")) {
+        template = template.replace("<head>", `<head>\n  ${preamble}`);
+      }
+
       const page = await vite.transformIndexHtml(url, template);
       res.status(200).set({ "Content-Type": "text/html" }).end(page);
     } catch (e) {

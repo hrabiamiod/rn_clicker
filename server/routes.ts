@@ -228,11 +228,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         listingData.title,
         listingData.description,
         req.body.categoryName || '',
-        listingData.price
+        listingData.price ? Number(listingData.price) : undefined
       );
 
       // Image moderation if files uploaded
-      let imageModerationResult = { approved: true, confidence: 1, reasons: [], category: 'appropriate' };
+      let imageModerationResult: {
+        approved: boolean;
+        confidence: number;
+        reasons: string[];
+        category: string;
+      } = {
+        approved: true,
+        confidence: 1,
+        reasons: [],
+        category: 'appropriate',
+      };
       if (files && files.length > 0) {
         // Convert first image to base64 for moderation
         const firstImage = files[0];
