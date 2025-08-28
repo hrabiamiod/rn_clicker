@@ -1,0 +1,83 @@
+version: '3.8'
+
+services:
+  # 🗄️ Baza danych PostgreSQL
+  postgres:
+    image: postgres:15-alpine
+    container_name: ogloszybko_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ogloszybko_dev
+      POSTGRES_USER: ogloszybko
+      POSTGRES_PASSWORD: secure_password_123
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    networks:
+      - ogloszybko_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ogloszybko -d ogloszybko_dev"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # 🚀 Aplikacja OgłoSzybko
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ogloszybko_app
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: "postgresql://ogloszybko:secure_password_123@postgres:5432/ogloszybko_dev"
+      PGHOST: postgres
+      PGPORT: 5432
+      PGDATABASE: ogloszybko_dev
+      PGUSER: ogloszybko
+      PGPASSWORD: secure_password_123
+      SESSION_SECRET: "super-secure-session-secret-minimum-32-characters-long"
+      PORT: 5000
+      HOST: 0.0.0.0
+    volumes:
+      - uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - ogloszybko_network
+
+  # 📊 pgAdmin (opcjonalne - do zarządzania bazą danych)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: ogloszybko_pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@ogloszybko.pl
+      PGADMIN_DEFAULT_PASSWORD: admin123
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "8080:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      - postgres
+    networks:
+      - ogloszybko_network
+
+volumes:
+  postgres_data:
+    driver: local
+  pgadmin_data:
+    driver: local
+  uploads:
+    driver: local
+
+networks:
+  ogloszybko_network:
+    driver: bridge
