@@ -6,18 +6,16 @@ import { type Server } from "http";
 import viteConfig from "../vite.config";
 import { nanoid } from "nanoid";
 import react from "@vitejs/plugin-react";
+import pino from "pino";
 
 const viteLogger = createLogger();
 
-export function log(message: string, source = "express") {
-  const formattedTime = new Date().toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: true,
-  });
+export const logger = pino({
+  level: process.env.LOG_LEVEL || "info",
+});
 
-  console.log(`${formattedTime} [${source}] ${message}`);
+export function log(message: string, source = "express") {
+  logger.info({ source }, message);
 }
 
 export async function setupVite(app: Express, server: Server) {
