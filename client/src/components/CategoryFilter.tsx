@@ -1,3 +1,4 @@
+import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -27,7 +28,7 @@ interface CategoryFilterProps {
 }
 
 export default function CategoryFilter({ filters, onFiltersChange }: CategoryFilterProps) {
-  const { data: categories, isLoading } = useQuery({
+  const { data: categories, isLoading } = useQuery<CategoryWithCount[]>({
     queryKey: ['/api/categories'],
     enabled: true,
   });
@@ -114,7 +115,7 @@ export default function CategoryFilter({ filters, onFiltersChange }: CategoryFil
             >
               Wszystkie
             </Button>
-            {categories?.map((category: CategoryWithCount) => (
+            {(categories || []).map((category: CategoryWithCount) => (
               <Button
                 key={category.id}
                 data-testid={`button-category-${category.id}`}

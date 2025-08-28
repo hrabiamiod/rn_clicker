@@ -1,3 +1,4 @@
+import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'wouter';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
@@ -32,7 +33,7 @@ export default function ListingsGrid({ searchQuery, filters }: ListingsGridProps
   if (filters.maxPrice) queryParams.append('maxPrice', filters.maxPrice.toString());
   queryParams.append('sortBy', filters.sortBy);
 
-  const { data: listings, isLoading, error } = useQuery({
+  const { data: listings, isLoading, error } = useQuery<ListingWithDetails[]>({
     queryKey: ['/api/listings', queryParams.toString()],
     enabled: true,
   });
@@ -73,7 +74,7 @@ export default function ListingsGrid({ searchQuery, filters }: ListingsGridProps
     );
   }
 
-  if (!listings || listings.length === 0) {
+  if (!listings || (listings as ListingWithDetails[]).length === 0) {
     return (
       <div className="text-center py-12">
         <div className="max-w-md mx-auto">
@@ -91,7 +92,7 @@ export default function ListingsGrid({ searchQuery, filters }: ListingsGridProps
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-      {listings.map((listing: ListingWithDetails) => (
+      {(listings as ListingWithDetails[]).map((listing: ListingWithDetails) => (
         <Card
           key={listing.id}
           data-testid={`card-listing-${listing.id}`}
@@ -165,7 +166,7 @@ export default function ListingsGrid({ searchQuery, filters }: ListingsGridProps
                 <div className="flex items-center space-x-1">
                   <Clock className="h-3 w-3" />
                   <span>
-                    {formatDistanceToNow(new Date(listing.createdAt), {
+                    {listing.createdAt && formatDistanceToNow(new Date(listing.createdAt), {
                       addSuffix: true,
                       locale: pl,
                     })}
