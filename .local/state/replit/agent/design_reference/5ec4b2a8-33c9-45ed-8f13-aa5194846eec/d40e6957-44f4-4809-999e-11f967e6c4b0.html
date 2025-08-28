@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OgłoSzybko - Szybkie ogłoszenia online</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+    tailwind.config = {
+        theme: {
+            extend: {
+                borderRadius: {
+                    lg: "var(--radius)",
+                    md: "calc(var(--radius) - 2px)", 
+                    sm: "calc(var(--radius) - 4px)",
+                },
+                colors: {
+                    background: "var(--background)",
+                    foreground: "var(--foreground)",
+                    card: {
+                        DEFAULT: "var(--card)",
+                        foreground: "var(--card-foreground)",
+                    },
+                    popover: {
+                        DEFAULT: "var(--popover)",
+                        foreground: "var(--popover-foreground)",
+                    },
+                    primary: {
+                        DEFAULT: "var(--primary)",
+                        foreground: "var(--primary-foreground)",
+                    },
+                    secondary: {
+                        DEFAULT: "var(--secondary)",
+                        foreground: "var(--secondary-foreground)",
+                    },
+                    muted: {
+                        DEFAULT: "var(--muted)",
+                        foreground: "var(--muted-foreground)",
+                    },
+                    accent: {
+                        DEFAULT: "var(--accent)",
+                        foreground: "var(--accent-foreground)",
+                    },
+                    destructive: {
+                        DEFAULT: "var(--destructive)",
+                        foreground: "var(--destructive-foreground)",
+                    },
+                    border: "var(--border)",
+                    input: "var(--input)",
+                    ring: "var(--ring)",
+                },
+                fontFamily: {
+                    sans: ["Inter", "system-ui", "sans-serif"],
+                }
+            },
+        }
+    };
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --background: hsl(0 0% 100%);
+            --foreground: hsl(222.2 84% 4.9%);
+            --card: hsl(0 0% 100%);
+            --card-foreground: hsl(222.2 84% 4.9%);
+            --popover: hsl(0 0% 100%);
+            --popover-foreground: hsl(222.2 84% 4.9%);
+            --primary: hsl(221.2 83.2% 53.3%);
+            --primary-foreground: hsl(210 40% 98%);
+            --secondary: hsl(210 40% 96%);
+            --secondary-foreground: hsl(222.2 84% 4.9%);
+            --muted: hsl(210 40% 96%);
+            --muted-foreground: hsl(215.4 16.3% 46.9%);
+            --accent: hsl(210 40% 96%);
+            --accent-foreground: hsl(222.2 84% 4.9%);
+            --destructive: hsl(0 84.2% 60.2%);
+            --destructive-foreground: hsl(210 40% 98%);
+            --border: hsl(214.3 31.8% 91.4%);
+            --input: hsl(214.3 31.8% 91.4%);
+            --ring: hsl(221.2 83.2% 53.3%);
+            --radius: 0.75rem;
+        }
+        
+        .listing-card {
+            transition: all 0.2s ease-in-out;
+        }
+        
+        .listing-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 24px -8px rgba(0,0,0,0.15);
+        }
+        
+        .category-pill {
+            transition: all 0.2s ease-in-out;
+        }
+        
+        .category-pill:hover {
+            transform: translateY(-1px);
+        }
+        
+        .search-input {
+            transition: all 0.2s ease-in-out;
+        }
+        
+        .search-input:focus {
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .skeleton {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
+        }
+
+        @keyframes loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+    </style>
+</head>
+<body class="bg-background text-foreground font-sans">
+    <!-- @COMPONENT: Header [navigation, search, user actions] -->
+    <header class="sticky top-0 z-50 w-full border-b border-border bg-background/80 backdrop-blur-md">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex h-16 items-center justify-between">
+                <!-- Logo -->
+                <div class="flex items-center space-x-4">
+                    <div class="flex items-center space-x-2">
+                        <div class="w-8 h-8 bg-gradient-to-br from-primary to-accent rounded-lg flex items-center justify-center">
+                            <i class="fas fa-bolt text-white text-sm"></i>
+                        </div>
+                        <span class="text-xl font-bold text-primary">OgłoSzybko</span>
+                    </div>
+                </div>
+
+                <!-- Search Bar - Desktop -->
+                <div class="hidden md:flex flex-1 max-w-md mx-8">
+                    <div class="relative w-full">
+                        <input 
+                            type="text" 
+                            placeholder="Czego szukasz?"
+                            data-bind="searchQuery"
+                            class="search-input w-full pl-10 pr-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent bg-muted/50"
+                        />
+                        <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground"></i>
+                    </div>
+                </div>
+
+                <!-- User Actions -->
+                <div class="flex items-center space-x-3">
+                    <!-- Add Listing Button -->
+                    <button 
+                        data-event="click:showAddListing"
+                        class="bg-primary text-primary-foreground px-4 py-2 rounded-lg font-medium hover:bg-primary/90 transition-colors flex items-center space-x-2"
+                    >
+                        <i class="fas fa-plus"></i>
+                        <span class="hidden sm:inline">Dodaj ogłoszenie</span>
+                    </button>
+
+                    <!-- User Menu -->
+                    <div class="relative" data-implementation="Dropdown menu component">
+                        <button class="flex items-center space-x-2 p-2 rounded-lg hover:bg-muted transition-colors">
+                            <div class="w-8 h-8 bg-secondary rounded-full flex items-center justify-center">
+                                <i class="fas fa-user text-secondary-foreground text-sm"></i>
+                            </div>
+                        </button>
+                    </div>
+
+                    <!-- Mobile Menu Button -->
+                    <button class="md:hidden p-2 rounded-lg hover:bg-muted transition-colors">
+                        <i class="fas fa-bars text-foreground"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Mobile Search -->
+            <div class="md:hidden pb-4">
+                <div class="relative">
+                    <input 
+                        type="text" 
+                        placeholder="Czego szukasz?"
+                        class="w-full pl-10 pr-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent bg-muted/50"
+                    />
+                    <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground"></i>
+                </div>
+            </div>
+        </div>
+    </header>
+    <!-- @END_COMPONENT: Header -->
+
+    <main class="container mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <!-- @COMPONENT: CategoryFilter [category pills, filters] -->
+        <section class="mb-8">
+            <h2 class="text-2xl font-bold mb-6">Kategorie</h2>
+            
+            <!-- Category Pills -->
+            <div class="flex flex-wrap gap-3 mb-6">
+                <!-- @MAP: categories.map(category => ( -->
+                <button 
+                    data-bind="category.name" 
+                    data-event="click:filterByCategory"
+                    class="category-pill bg-card border border-border rounded-full px-4 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground transition-all flex items-center space-x-2"
+                >
+                    <i data-bind="category.icon" class="fas fa-car"></i>
+                    <span>Motoryzacja</span>
+                    <span data-bind="category.count" class="bg-muted text-muted-foreground rounded-full px-2 py-1 text-xs">1,234</span>
+                </button>
+                
+                <button class="category-pill bg-card border border-border rounded-full px-4 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground transition-all flex items-center space-x-2">
+                    <i class="fas fa-home"></i>
+                    <span>Nieruchomości</span>
+                    <span class="bg-muted text-muted-foreground rounded-full px-2 py-1 text-xs">856</span>
+                </button>
+                
+                <button class="category-pill bg-card border border-border rounded-full px-4 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground transition-all flex items-center space-x-2">
+                    <i class="fas fa-laptop"></i>
+                    <span>Elektronika</span>
+                    <span class="bg-muted text-muted-foreground rounded-full px-2 py-1 text-xs">2,045</span>
+                </button>
+                
+                <button class="category-pill bg-card border border-border rounded-full px-4 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground transition-all flex items-center space-x-2">
+                    <i class="fas fa-tshirt"></i>
+                    <span>Moda</span>
+                    <span class="bg-muted text-muted-foreground rounded-full px-2 py-1 text-xs">678</span>
+                </button>
+                
+                <button class="category-pill bg-card border border-border rounded-full px-4 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground transition-all flex items-center space-x-2">
+                    <i class="fas fa-couch"></i>
+                    <span>Dom i Ogród</span>
+                    <span class="bg-muted text-muted-foreground rounded-full px-2 py-1 text-xs">934</span>
+                </button>
+                
+                <button class="category-pill bg-card border border-border rounded-full px-4 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground transition-all flex items-center space-x-2">
+                    <i class="fas fa-briefcase"></i>
+                    <span>Praca</span>
+                    <span class="bg-muted text-muted-foreground rounded-full px-2 py-1 text-xs">445</span>
+                </button>
+                
+                <button class="category-pill bg-card border border-border rounded-full px-4 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground transition-all flex items-center space-x-2">
+                    <i class="fas fa-tools"></i>
+                    <span>Usługi</span>
+                    <span class="bg-muted text-muted-foreground rounded-full px-2 py-1 text-xs">567</span>
+                </button>
+                
+                <button class="category-pill bg-card border border-border rounded-full px-4 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground transition-all flex items-center space-x-2">
+                    <i class="fas fa-football-ball"></i>
+                    <span>Sport i Hobby</span>
+                    <span class="bg-muted text-muted-foreground rounded-full px-2 py-1 text-xs">321</span>
+                </button>
+                
+                <button class="category-pill bg-card border border-border rounded-full px-4 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground transition-all flex items-center space-x-2">
+                    <i class="fas fa-gem"></i>
+                    <span>Kolekcje</span>
+                    <span class="bg-muted text-muted-foreground rounded-full px-2 py-1 text-xs">123</span>
+                </button>
+                
+                <button class="category-pill bg-card border border-border rounded-full px-4 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground transition-all flex items-center space-x-2">
+                    <i class="fas fa-paw"></i>
+                    <span>Zwierzęta</span>
+                    <span class="bg-muted text-muted-foreground rounded-full px-2 py-1 text-xs">234</span>
+                </button>
+                <!-- @END_MAP )) -->
+            </div>
+
+            <!-- Filters Bar -->
+            <div class="flex flex-col sm:flex-row gap-4 p-4 bg-card rounded-lg border border-border">
+                <div class="flex flex-col sm:flex-row gap-4 flex-1">
+                    <!-- Location Filter -->
+                    <div class="flex-1">
+                        <select 
+                            data-bind="locationFilter"
+                            class="w-full px-3 py-2 border border-border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+                        >
+                            <option>Wszystkie lokalizacje</option>
+                            <option>Warszawa</option>
+                            <option>Kraków</option>
+                            <option>Gdańsk</option>
+                            <option>Wrocław</option>
+                            <option>Poznań</option>
+                        </select>
+                    </div>
+
+                    <!-- Price Range -->
+                    <div class="flex gap-2 items-center">
+                        <input 
+                            type="number" 
+                            placeholder="Cena od"
+                            data-bind="priceFrom"
+                            class="w-24 px-3 py-2 border border-border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+                        />
+                        <span class="text-muted-foreground">-</span>
+                        <input 
+                            type="number" 
+                            placeholder="Cena do"
+                            data-bind="priceTo"
+                            class="w-24 px-3 py-2 border border-border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+                        />
+                    </div>
+
+                    <!-- Sort By -->
+                    <div class="flex-1">
+                        <select 
+                            data-bind="sortBy"
+                            class="w-full px-3 py-2 border border-border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+                        >
+                            <option>Sortuj: Najnowsze</option>
+                            <option>Sortuj: Najstarsze</option>
+                            <option>Sortuj: Cena rosnąco</option>
+                            <option>Sortuj: Cena malejąco</option>
+                        </select>
+                    </div>
+                </div>
+
+                <button 
+                    data-event="click:applyFilters"
+                    class="px-6 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors flex items-center justify-center space-x-2"
+                >
+                    <i class="fas fa-filter"></i>
+                    <span>Filtruj</span>
+                </button>
+            </div>
+        </section>
+        <!-- @END_COMPONENT: CategoryFilter -->
+
+        <!-- @COMPONENT: ListingsGrid [listing cards with lazy loading] -->
+        <section>
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold">
+                    Najnowsze ogłoszenia 
+                    <span class="text-muted-foreground text-base font-normal">(7,234 wyników)</span>
+                </h2>
+                
+                <!-- View Toggle -->
+                <div class="flex bg-muted rounded-lg p-1">
+                    <button 
+                        data-event="click:setGridView"
+                        class="px-3 py-1 rounded-md bg-background text-foreground text-sm font-medium"
+                    >
+                        <i class="fas fa-th-large"></i>
+                    </button>
+                    <button 
+                        data-event="click:setListView"
+                        class="px-3 py-1 rounded-md text-muted-foreground hover:text-foreground text-sm font-medium"
+                    >
+                        <i class="fas fa-list"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Listings Grid -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                <!-- @MAP: listings.map(listing => ( -->
+                <!-- Listing Card 1 -->
+                <article 
+                    data-bind="listing.id"
+                    class="listing-card bg-card rounded-lg border border-border overflow-hidden cursor-pointer"
+                    data-event="click:viewListing"
+                >
+                    <div class="relative">
+                        <!-- BMW X5 2019 - luxury SUV in metallic silver -->
+                        <img 
+                            src="https://images.unsplash.com/photo-1555215695-3004980ad54e?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=800&h=600" 
+                            alt="BMW X5 2019 - luksusowy SUV w metalicznym srebrze" 
+                            class="w-full h-48 object-cover"
+                            data-mock-image="true"
+                        />
+                        <div class="absolute top-2 left-2">
+                            <span class="bg-primary text-primary-foreground px-2 py-1 rounded-md text-xs font-medium">
+                                Motoryzacja
+                            </span>
+                        </div>
+                        <div class="absolute top-2 right-2">
+                            <button 
+                                data-event="click:toggleFavorite"
+                                class="bg-background/80 backdrop-blur-sm p-2 rounded-full hover:bg-background transition-colors"
+                            >
+                                <i class="far fa-heart text-muted-foreground"></i>
+                            </button>
+                        </div>
+                        <div class="absolute bottom-2 right-2">
+                            <span class="bg-background/80 backdrop-blur-sm text-foreground px-2 py-1 rounded-md text-xs">
+                                <i class="fas fa-camera"></i> 8
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div class="p-4">
+                        <h3 data-bind="listing.title" class="font-semibold text-lg mb-2 line-clamp-2">
+                            BMW X5 3.0d xDrive - Stan idealny, serwisowany
+                        </h3>
+                        
+                        <div class="flex items-center text-muted-foreground text-sm mb-2">
+                            <i class="fas fa-map-marker-alt mr-1"></i>
+                            <span data-bind="listing.location">Warszawa, Mokotów</span>
+                        </div>
+                        
+                        <div class="flex items-center justify-between">
+                            <span data-bind="listing.price" class="text-2xl font-bold text-primary">
+                                185 000 zł
+                            </span>
+                            <span data-bind="listing.date" class="text-muted-foreground text-sm">
+                                2 dni temu
+                            </span>
+                        </div>
+                        
+                        <div class="flex items-center mt-2 text-xs text-muted-foreground">
+                            <i class="fas fa-eye mr-1"></i>
+                            <span data-bind="listing.views">247 wyświetleń</span>
+                        </div>
+                    </div>
+                </article>
+
+                <!-- Listing Card 2 -->
+                <article class="listing-card bg-card rounded-lg border border-border overflow-hidden cursor-pointer">
+                    <div class="relative">
+                        <!-- Modern apartment interior with large windows and natural light -->
+                        <img 
+                            src="https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=800&h=600" 
+                            alt="Nowoczesne mieszkanie z dużymi oknami i naturalnym światłem" 
+                            class="w-full h-48 object-cover"
+                            data-mock-image="true"
+                        />
+                        <div class="absolute top-2 left-2">
+                            <span class="bg-destructive text-destructive-foreground px-2 py-1 rounded-md text-xs font-medium">
+                                Nieruchomości
+                            </span>
+                        </div>
+                        <div class="absolute top-2 right-2">
+                            <button class="bg-background/80 backdrop-blur-sm p-2 rounded-full hover:bg-background transition-colors">
+                                <i class="far fa-heart text-muted-foreground"></i>
+                            </button>
+                        </div>
+                        <div class="absolute bottom-2 right-2">
+                            <span class="bg-background/80 backdrop-blur-sm text-foreground px-2 py-1 rounded-md text-xs">
+                                <i class="fas fa-camera"></i> 12
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div class="p-4">
+                        <h3 class="font-semibold text-lg mb-2 line-clamp-2">
+                            Mieszkanie 3-pokojowe, 65m², balkon, parking
+                        </h3>
+                        
+                        <div class="flex items-center text-muted-foreground text-sm mb-2">
+                            <i class="fas fa-map-marker-alt mr-1"></i>
+                            <span>Kraków, Kazimierz</span>
+                        </div>
+                        
+                        <div class="flex items-center justify-between">
+                            <span class="text-2xl font-bold text-primary">
+                                850 000 zł
+                            </span>
+                            <span class="text-muted-foreground text-sm">
+                                3 dni temu
+                            </span>
+                        </div>
+                        
+                        <div class="flex items-center mt-2 text-xs text-muted-foreground">
+                            <i class="fas fa-eye mr-1"></i>
+                            <span>156 wyświetleń</span>
+                        </div>
+                    </div>
+                </article>
+
+                <!-- Listing Card 3 -->
+                <article class="listing-card bg-card rounded-lg border border-border overflow-hidden cursor-pointer">
+                    <div class="relative">
+                        <!-- Latest MacBook Pro on a wooden desk with accessories -->
+                        <img 
+                            src="https://images.unsplash.com/photo-1541807084-5c52b6b3adef?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=800&h=600" 
+                            alt="Najnowszy MacBook Pro na drewnianym biurku z akcesoriami" 
+                            class="w-full h-48 object-cover"
+                            data-mock-image="true"
+                        />
+                        <div class="absolute top-2 left-2">
+                            <span class="bg-amber-500 text-white px-2 py-1 rounded-md text-xs font-medium">
+                                Elektronika
+                            </span>
+                        </div>
+                        <div class="absolute top-2 right-2">
+                            <button class="bg-background/80 backdrop-blur-sm p-2 rounded-full hover:bg-background transition-colors">
+                                <i class="fas fa-heart text-red-500"></i>
+                            </button>
+                        </div>
+                        <div class="absolute bottom-2 right-2">
+                            <span class="bg-background/80 backdrop-blur-sm text-foreground px-2 py-1 rounded-md text-xs">
+                                <i class="fas fa-camera"></i> 5
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div class="p-4">
+                        <h3 class="font-semibold text-lg mb-2 line-clamp-2">
+                            MacBook Pro 14" M2 Pro, 512GB SSD, idealny stan
+                        </h3>
+                        
+                        <div class="flex items-center text-muted-foreground text-sm mb-2">
+                            <i class="fas fa-map-marker-alt mr-1"></i>
+                            <span>Gdańsk, Śródmieście</span>
+                        </div>
+                        
+                        <div class="flex items-center justify-between">
+                            <span class="text-2xl font-bold text-primary">
+                                8 500 zł
+                            </span>
+                            <span class="text-muted-foreground text-sm">
+                                1 dzień temu
+                            </span>
+                        </div>
+                        
+                        <div class="flex items-center mt-2 text-xs text-muted-foreground">
+                            <i class="fas fa-eye mr-1"></i>
+                            <span>89 wyświetleń</span>
+                        </div>
+                    </div>
+                </article>
+
+                <!-- Listing Card 4 -->
+                <article class="listing-card bg-card rounded-lg border border-border overflow-hidden cursor-pointer">
+                    <div class="relative">
+                        <!-- Designer dress hanging on a modern clothing rack -->
+                        <img 
+                            src="https://images.unsplash.com/photo-1539109136881-3be0616acf4b?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=800&h=600" 
+                            alt="Designerska sukienka wisząca na nowoczesnym wieszaku" 
+                            class="w-full h-48 object-cover"
+                            data-mock-image="true"
+                        />
+                        <div class="absolute top-2 left-2">
+                            <span class="bg-pink-500 text-white px-2 py-1 rounded-md text-xs font-medium">
+                                Moda
+                            </span>
+                        </div>
+                        <div class="absolute top-2 right-2">
+                            <button class="bg-background/80 backdrop-blur-sm p-2 rounded-full hover:bg-background transition-colors">
+                                <i class="far fa-heart text-muted-foreground"></i>
+                            </button>
+                        </div>
+                        <div class="absolute bottom-2 right-2">
+                            <span class="bg-background/80 backdrop-blur-sm text-foreground px-2 py-1 rounded-md text-xs">
+                                <i class="fas fa-camera"></i> 3
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div class="p-4">
+                        <h3 class="font-semibold text-lg mb-2 line-clamp-2">
+                            Sukienka ZARA rozmiar M, nowa z metkami
+                        </h3>
+                        
+                        <div class="flex items-center text-muted-foreground text-sm mb-2">
+                            <i class="fas fa-map-marker-alt mr-1"></i>
+                            <span>Wrocław, Stare Miasto</span>
+                        </div>
+                        
+                        <div class="flex items-center justify-between">
+                            <span class="text-2xl font-bold text-primary">
+                                180 zł
+                            </span>
+                            <span class="text-muted-foreground text-sm">
+                                4 godziny temu
+                            </span>
+                        </div>
+                        
+                        <div class="flex items-center mt-2 text-xs text-muted-foreground">
+                            <i class="fas fa-eye mr-1"></i>
+                            <span>23 wyświetleń</span>
+                        </div>
+                    </div>
+                </article>
+
+                <!-- Listing Card 5 -->
+                <article class="listing-card bg-card rounded-lg border border-border overflow-hidden cursor-pointer">
+                    <div class="relative">
+                        <!-- Comfortable modern sofa in a bright living room -->
+                        <img 
+                            src="https://images.unsplash.com/photo-1586023492125-27b2c045efd7?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=800&h=600" 
+                            alt="Wygodna nowoczesna sofa w jasnym salonie" 
+                            class="w-full h-48 object-cover"
+                            data-mock-image="true"
+                        />
+                        <div class="absolute top-2 left-2">
+                            <span class="bg-green-500 text-white px-2 py-1 rounded-md text-xs font-medium">
+                                Dom i Ogród
+                            </span>
+                        </div>
+                        <div class="absolute top-2 right-2">
+                            <button class="bg-background/80 backdrop-blur-sm p-2 rounded-full hover:bg-background transition-colors">
+                                <i class="far fa-heart text-muted-foreground"></i>
+                            </button>
+                        </div>
+                        <div class="absolute bottom-2 right-2">
+                            <span class="bg-background/80 backdrop-blur-sm text-foreground px-2 py-1 rounded-md text-xs">
+                                <i class="fas fa-camera"></i> 6
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div class="p-4">
+                        <h3 class="font-semibold text-lg mb-2 line-clamp-2">
+                            Sofa 3-osobowa IKEA EKTORP, szara, bardzo dobry stan
+                        </h3>
+                        
+                        <div class="flex items-center text-muted-foreground text-sm mb-2">
+                            <i class="fas fa-map-marker-alt mr-1"></i>
+                            <span>Poznań, Jeżyce</span>
+                        </div>
+                        
+                        <div class="flex items-center justify-between">
+                            <span class="text-2xl font-bold text-primary">
+                                650 zł
+                            </span>
+                            <span class="text-muted-foreground text-sm">
+                                2 dni temu
+                            </span>
+                        </div>
+                        
+                        <div class="flex items-center mt-2 text-xs text-muted-foreground">
+                            <i class="fas fa-eye mr-1"></i>
+                            <span>67 wyświetleń</span>
+                        </div>
+                    </div>
+                </article>
+
+                <!-- Listing Card 6 -->
+                <article class="listing-card bg-card rounded-lg border border-border overflow-hidden cursor-pointer">
+                    <div class="relative">
+                        <!-- Professional office workspace with modern equipment -->
+                        <img 
+                            src="https://images.unsplash.com/photo-1497366216548-37526070297c?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=800&h=600" 
+                            alt="Profesjonalne biuro z nowoczesnym wyposażeniem" 
+                            class="w-full h-48 object-cover"
+                            data-mock-image="true"
+                        />
+                        <div class="absolute top-2 left-2">
+                            <span class="bg-blue-600 text-white px-2 py-1 rounded-md text-xs font-medium">
+                                Praca
+                            </span>
+                        </div>
+                        <div class="absolute top-2 right-2">
+                            <button class="bg-background/80 backdrop-blur-sm p-2 rounded-full hover:bg-background transition-colors">
+                                <i class="far fa-heart text-muted-foreground"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="p-4">
+                        <h3 class="font-semibold text-lg mb-2 line-clamp-2">
+                            Senior Developer React/Node.js - praca zdalna
+                        </h3>
+                        
+                        <div class="flex items-center text-muted-foreground text-sm mb-2">
+                            <i class="fas fa-map-marker-alt mr-1"></i>
+                            <span>Warszawa / Zdalnie</span>
+                        </div>
+                        
+                        <div class="flex items-center justify-between">
+                            <span class="text-2xl font-bold text-primary">
+                                22 000 zł
+                            </span>
+                            <span class="text-muted-foreground text-sm">
+                                1 dzień temu
+                            </span>
+                        </div>
+                        
+                        <div class="flex items-center mt-2 text-xs text-muted-foreground">
+                            <i class="fas fa-eye mr-1"></i>
+                            <span>134 wyświetleń</span>
+                        </div>
+                    </div>
+                </article>
+
+                <!-- Loading Skeleton Cards (for demonstration) -->
+                <div class="listing-card bg-card rounded-lg border border-border overflow-hidden" data-implementation="Show while loading more listings">
+                    <div class="skeleton w-full h-48"></div>
+                    <div class="p-4">
+                        <div class="skeleton h-6 w-3/4 mb-2"></div>
+                        <div class="skeleton h-4 w-1/2 mb-2"></div>
+                        <div class="flex justify-between items-center">
+                            <div class="skeleton h-8 w-24"></div>
+                            <div class="skeleton h-4 w-16"></div>
+                        </div>
+                    </div>
+                </div>
+                <!-- @END_MAP )) -->
+            </div>
+
+            <!-- Load More Button -->
+            <div class="text-center mt-8">
+                <button 
+                    data-event="click:loadMore"
+                    class="px-8 py-3 bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/80 transition-colors font-medium"
+                >
+                    Załaduj więcej ogłoszeń
+                </button>
+            </div>
+        </section>
+        <!-- @END_COMPONENT: ListingsGrid -->
+    </main>
+
+    <!-- @COMPONENT: FloatingActionButton [quick add listing] -->
+    <button 
+        data-event="click:quickAddListing"
+        class="fixed bottom-6 right-6 w-14 h-14 bg-primary text-primary-foreground rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all flex items-center justify-center z-40 md:hidden"
+        data-implementation="Show only on mobile devices"
+    >
+        <i class="fas fa-plus text-xl"></i>
+    </button>
+    <!-- @END_COMPONENT: FloatingActionButton -->
+
+    <!-- @COMPONENT: Footer [links, legal, contact] -->
+    <footer class="bg-muted/50 border-t border-border mt-16">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+                <div class="col-span-1 md:col-span-2">
+                    <div class="flex items-center space-x-2 mb-4">
+                        <div class="w-8 h-8 bg-gradient-to-br from-primary to-accent rounded-lg flex items-center justify-center">
+                            <i class="fas fa-bolt text-white text-sm"></i>
+                        </div>
+                        <span class="text-xl font-bold text-primary">OgłoSzybko</span>
+                    </div>
+                    <p class="text-muted-foreground mb-4 max-w-md">
+                        Najszybsza platforma ogłoszeń w Polsce. Dodaj ogłoszenie w mniej niż minutę!
+                    </p>
+                    <div class="flex space-x-4">
+                        <button class="text-muted-foreground hover:text-foreground transition-colors">
+                            <i class="fab fa-facebook-f"></i>
+                        </button>
+                        <button class="text-muted-foreground hover:text-foreground transition-colors">
+                            <i class="fab fa-twitter"></i>
+                        </button>
+                        <button class="text-muted-foreground hover:text-foreground transition-colors">
+                            <i class="fab fa-instagram"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div>
+                    <h3 class="font-semibold mb-4">Dla użytkowników</h3>
+                    <ul class="space-y-2 text-muted-foreground">
+                        <li><a href="#" class="hover:text-foreground transition-colors">Jak dodać ogłoszenie</a></li>
+                        <li><a href="#" class="hover:text-foreground transition-colors">Bezpieczeństwo</a></li>
+                        <li><a href="#" class="hover:text-foreground transition-colors">Pomoc</a></li>
+                        <li><a href="#" class="hover:text-foreground transition-colors">Kontakt</a></li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h3 class="font-semibold mb-4">Informacje</h3>
+                    <ul class="space-y-2 text-muted-foreground">
+                        <li><a href="#" class="hover:text-foreground transition-colors">O nas</a></li>
+                        <li><a href="#" class="hover:text-foreground transition-colors">Regulamin</a></li>
+                        <li><a href="#" class="hover:text-foreground transition-colors">Polityka prywatności</a></li>
+                        <li><a href="#" class="hover:text-foreground transition-colors">Cookies</a></li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="border-t border-border mt-8 pt-8 text-center text-muted-foreground">
+                <p>&copy; 2025 OgłoSzybko. Wszystkie prawa zastrzeżone.</p>
+            </div>
+        </div>
+    </footer>
+    <!-- @END_COMPONENT: Footer -->
+
+    <script>
+        (function() {
+            // TODO: Implement proper state management, API calls, and business logic
+            
+            // Basic interaction handlers for demonstration
+            document.addEventListener('click', function(e) {
+                const target = e.target.closest('[data-event]');
+                if (!target) return;
+                
+                const event = target.getAttribute('data-event');
+                console.log('Event triggered:', event);
+                
+                // TODO: Replace with proper event handling
+                switch(event) {
+                    case 'click:viewListing':
+                        console.log('Navigate to listing detail');
+                        break;
+                    case 'click:showAddListing':
+                        console.log('Show add listing modal/page');
+                        break;
+                    case 'click:toggleFavorite':
+                        e.stopPropagation();
+                        console.log('Toggle favorite status');
+                        break;
+                    case 'click:applyFilters':
+                        console.log('Apply current filters');
+                        break;
+                    case 'click:loadMore':
+                        console.log('Load more listings');
+                        break;
+                    case 'click:filterByCategory':
+                        console.log('Filter by category');
+                        break;
+                }
+            });
+            
+            // Lazy loading simulation
+            const observerOptions = {
+                threshold: 0.1,
+                rootMargin: '100px 0px'
+            };
+            
+            const imageObserver = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const img = entry.target;
+                        // TODO: Implement actual lazy loading
+                        console.log('Image in viewport, should load:', img.src);
+                        imageObserver.unobserve(img);
+                    }
+                });
+            }, observerOptions);
+            
+            // Observe all images for lazy loading
+            document.querySelectorAll('img[data-mock-image="true"]').forEach(img => {
+                imageObserver.observe(img);
+            });
+            
+        })();
+    </script>
+</body>
+</html>
