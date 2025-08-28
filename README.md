@@ -64,6 +64,9 @@ SESSION_SECRET="twoj-bardzo-bezpieczny-sekret-sesji"
 
 # Środowisko
 NODE_ENV=development
+
+# OpenAI
+OPENAI_API_KEY="twoj_klucz_api_openai"
 ```
 
 ### 5. Zainicjalizuj bazę danych

@@ -1,4 +1,4 @@
-import express, { type Express } from "express";
+import express, { type Express, type Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
@@ -11,6 +11,8 @@ import speakeasy from "speakeasy";
 import QRCode from "qrcode";
 import rateLimit from "express-rate-limit";
 import helmet from "helmet";
+import { logger } from "./vite";
+import type { AuthenticatedRequest } from "./types";
 
 // Rate limiting
 const createListingLimiter = rateLimit({
@@ -55,21 +57,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   await initializeCategories();
 
   // Auth routes
-  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
+  app.get('/api/auth/user', isAuthenticated, (async (req: AuthenticatedRequest, res: Response) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user!.claims.sub;
       const user = await storage.getUser(userId);
       res.json(user);
     } catch (error) {
-      console.error("Error fetching user:", error);
+      logger.error({ err: error }, "Error fetching user");
       res.status(500).json({ message: "Failed to fetch user" });
     }
-  });
+  }) as any);
 
   // 2FA routes
-  app.post('/api/auth/2fa/setup', isAuthenticated, async (req: any, res) => {
+  app.post('/api/auth/2fa/setup', isAuthenticated, (async (req: AuthenticatedRequest, res: Response) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user!.claims.sub;
       const user = await storage.getUser(userId);
       
       if (!user) {
@@ -92,14 +94,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({ qrCode, secret: secret.base32 });
     } catch (error) {
-      console.error("Error setting up 2FA:", error);
+      logger.error({ err: error }, "Error setting up 2FA");
       res.status(500).json({ message: "Failed to setup 2FA" });
     }
-  });
+  }) as any);
 
-  app.post('/api/auth/2fa/verify', isAuthenticated, async (req: any, res) => {
+  app.post('/api/auth/2fa/verify', isAuthenticated, (async (req: AuthenticatedRequest, res: Response) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user!.claims.sub;
       const { token } = req.body;
 
       if (!token) {
@@ -125,10 +127,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.status(400).json({ message: "Invalid token" });
       }
     } catch (error) {
-      console.error("Error verifying 2FA:", error);
+      logger.error({ err: error }, "Error verifying 2FA");
       res.status(500).json({ message: "Failed to verify 2FA" });
     }
-  });
+  }) as any);
 
   // Categories routes
   app.get('/api/categories', async (req, res) => {
@@ -136,7 +138,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const categories = await storage.getCategories();
       res.json(categories);
     } catch (error) {
-      console.error("Error fetching categories:", error);
+      logger.error({ err: error }, "Error fetching categories");
       res.status(500).json({ message: "Failed to fetch categories" });
     }
   });
@@ -169,7 +171,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json(listings);
     } catch (error) {
-      console.error("Error fetching listings:", error);
+      logger.error({ err: error }, "Error fetching listings");
       res.status(500).json({ message: "Failed to fetch listings" });
     }
   });
@@ -194,25 +196,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json(listing);
     } catch (error) {
-      console.error("Error fetching listing:", error);
+      logger.error({ err: error }, "Error fetching listing");
       res.status(500).json({ message: "Failed to fetch listing" });
     }
   });
 
-  app.get('/api/my-listings', isAuthenticated, async (req: any, res) => {
+  app.get('/api/my-listings', isAuthenticated, (async (req: AuthenticatedRequest, res: Response) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user!.claims.sub;
       const listings = await storage.getListingsByUser(userId);
       res.json(listings);
     } catch (error) {
-      console.error("Error fetching user listings:", error);
+      logger.error({ err: error }, "Error fetching user listings");
       res.status(500).json({ message: "Failed to fetch your listings" });
     }
-  });
+  }) as any);
 
-  app.post('/api/listings', isAuthenticated, createListingLimiter, upload.array('images', 10), async (req: any, res) => {
+  app.post('/api/listings', isAuthenticated, createListingLimiter, upload.array('images', 10), (async (req: AuthenticatedRequest, res: Response) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user!.claims.sub;
       const files = req.files as Express.Multer.File[];
 
       // Validate listing data
@@ -291,17 +293,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
       });
     } catch (error) {
-      console.error("Error creating listing:", error);
+      logger.error({ err: error }, "Error creating listing");
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Invalid listing data", errors: error.errors });
       }
       res.status(500).json({ message: "Failed to create listing" });
     }
-  });
+  }) as any);
 
-  app.put('/api/listings/:id', isAuthenticated, async (req: any, res) => {
+  app.put('/api/listings/:id', isAuthenticated, (async (req: AuthenticatedRequest, res: Response) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user!.claims.sub;
       const listingId = parseInt(req.params.id);
       
       const updates = {
@@ -321,60 +323,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json(updatedListing);
     } catch (error) {
-      console.error("Error updating listing:", error);
+      logger.error({ err: error }, "Error updating listing");
       res.status(500).json({ message: "Failed to update listing" });
     }
-  });
+  }) as any);
 
-  app.delete('/api/listings/:id', isAuthenticated, async (req: any, res) => {
+  app.delete('/api/listings/:id', isAuthenticated, (async (req: AuthenticatedRequest, res: Response) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user!.claims.sub;
       const listingId = parseInt(req.params.id);
-      
+
+      const images = await storage.getListingImages(listingId);
       const deleted = await storage.deleteListing(listingId, userId);
-      
+
       if (!deleted) {
         return res.status(404).json({ message: "Listing not found or unauthorized" });
       }
 
+      for (const image of images) {
+        const filename = path.basename(image.imageUrl);
+        await deleteFile(path.join('uploads/listings', filename));
+      }
+
       res.json({ success: true });
     } catch (error) {
-      console.error("Error deleting listing:", error);
+      logger.error({ err: error }, "Error deleting listing");
       res.status(500).json({ message: "Failed to delete listing" });
     }
-  });
+  }) as any);
 
   // Favorites routes
-  app.post('/api/favorites/:listingId', isAuthenticated, async (req: any, res) => {
+  app.post('/api/favorites/:listingId', isAuthenticated, (async (req: AuthenticatedRequest, res: Response) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user!.claims.sub;
       const listingId = parseInt(req.params.listingId);
 
       const result = await storage.toggleFavorite(userId, listingId);
       res.json({ favorited: result !== null });
     } catch (error) {
-      console.error("Error toggling favorite:", error);
+      logger.error({ err: error }, "Error toggling favorite");
       res.status(500).json({ message: "Failed to toggle favorite" });
     }
-  });
+  }) as any);
 
-  app.get('/api/favorites', isAuthenticated, async (req: any, res) => {
+  app.get('/api/favorites', isAuthenticated, (async (req: AuthenticatedRequest, res: Response) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user!.claims.sub;
       const favorites = await storage.getUserFavorites(userId);
       res.json(favorites);
     } catch (error) {
-      console.error("Error fetching favorites:", error);
+      logger.error({ err: error }, "Error fetching favorites");
       res.status(500).json({ message: "Failed to fetch favorites" });
     }
-  });
+  }) as any);
 
   // Analytics routes
-  app.get('/api/listings/:id/analytics', isAuthenticated, async (req: any, res) => {
+  app.get('/api/listings/:id/analytics', isAuthenticated, (async (req: AuthenticatedRequest, res: Response) => {
     try {
       const listingId = parseInt(req.params.id);
       const days = parseInt(req.query.days as string) || 30;
-      const userId = req.user.claims.sub;
+      const userId = req.user!.claims.sub;
 
       // Verify user owns the listing
       const listing = await storage.getListing(listingId);
@@ -385,10 +393,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const analytics = await storage.getListingAnalytics(listingId, days);
       res.json(analytics);
     } catch (error) {
-      console.error("Error fetching analytics:", error);
+      logger.error({ err: error }, "Error fetching analytics");
       res.status(500).json({ message: "Failed to fetch analytics" });
     }
-  });
+  }) as any);
 
   const httpServer = createServer(app);
   return httpServer;
@@ -416,9 +424,9 @@ async function initializeCategories() {
         await storage.createCategory(category);
       }
 
-      console.log('Default categories initialized');
+      logger.info('Default categories initialized');
     }
   } catch (error) {
-    console.error('Error initializing categories:', error);
+    logger.error({ err: error }, 'Error initializing categories');
   }
 }

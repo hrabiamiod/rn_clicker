@@ -2,6 +2,7 @@ import multer from 'multer';
 import { v4 as uuidv4 } from 'uuid';
 import path from 'path';
 import fs from 'fs/promises';
+import { logger } from './vite';
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
@@ -42,7 +43,7 @@ export async function deleteFile(filePath: string): Promise<void> {
   try {
     await fs.unlink(filePath);
   } catch (error) {
-    console.error('Failed to delete file:', error);
+    logger.error({ err: error }, 'Failed to delete file');
   }
 }
 

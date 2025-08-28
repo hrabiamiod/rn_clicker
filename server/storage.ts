@@ -20,7 +20,7 @@ import {
   type CategoryWithCount,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, asc, and, or, like, sql, count, gte } from "drizzle-orm";
+import { eq, desc, asc, and, or, like, sql, count, gte, inArray } from "drizzle-orm";
 
 export type NewListing = InsertListing &
   Partial<Pick<Listing, "isApproved" | "moderationStatus" | "moderationNotes" | "publishedAt">>;
@@ -60,6 +60,7 @@ export interface IStorage {
   // Image operations
   addListingImage(image: InsertListingImage): Promise<ListingImage>;
   deleteListingImage(id: number, listingId: number): Promise<boolean>;
+  getListingImages(listingId: number): Promise<ListingImage[]>;
 
   // Favorites operations
   toggleFavorite(userId: string, listingId: number): Promise<UserFavorite | null>;
@@ -260,21 +261,26 @@ export class DatabaseStorage implements IStorage {
 
     const results = await query;
 
-    // Fetch images for each listing
-    const listingsWithImages = await Promise.all(
-      results.map(async (listing: any) => {
-        const images = await db
-          .select()
-          .from(listingImages)
-          .where(eq(listingImages.listingId, listing.id!))
-          .orderBy(listingImages.sortOrder);
+    const listingIds = results.map((l: any) => l.id);
+    let imagesByListing = new Map<number, ListingImage[]>();
+    if (listingIds.length > 0) {
+      const images = await db
+        .select()
+        .from(listingImages)
+        .where(inArray(listingImages.listingId, listingIds))
+        .orderBy(listingImages.listingId, listingImages.sortOrder);
+      for (const image of images) {
+        if (!imagesByListing.has(image.listingId)) {
+          imagesByListing.set(image.listingId, []);
+        }
+        imagesByListing.get(image.listingId)!.push(image);
+      }
+    }
 
-        return {
-          ...listing,
-          images,
-        };
-      })
-    );
+    const listingsWithImages = results.map((listing: any) => ({
+      ...listing,
+      images: imagesByListing.get(listing.id) ?? [],
+    }));
 
     return listingsWithImages as ListingWithDetails[];
   }
@@ -392,6 +398,14 @@ export class DatabaseStorage implements IStorage {
     return (result.rowCount ?? 0) > 0;
   }
 
+  async getListingImages(listingId: number): Promise<ListingImage[]> {
+    return await db
+      .select()
+      .from(listingImages)
+      .where(eq(listingImages.listingId, listingId))
+      .orderBy(listingImages.sortOrder);
+  }
+
   // Favorites operations
   async toggleFavorite(userId: string, listingId: number): Promise<UserFavorite | null> {
     const existing = await db
@@ -448,24 +462,27 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(users, eq(listings.userId, users.id))
       .where(eq(userFavorites.userId, userId));
 
-    // Fetch images for each listing
-    const listingsWithImages = await Promise.all(
-      favoriteListings.map(async (listing: any) => {
-        const images = await db
-          .select()
-          .from(listingImages)
-          .where(eq(listingImages.listingId, listing.id!))
-          .orderBy(listingImages.sortOrder);
+    const favoriteIds = favoriteListings.map((l: any) => l.id);
+    let imagesByListing = new Map<number, ListingImage[]>();
+    if (favoriteIds.length > 0) {
+      const images = await db
+        .select()
+        .from(listingImages)
+        .where(inArray(listingImages.listingId, favoriteIds))
+        .orderBy(listingImages.listingId, listingImages.sortOrder);
+      for (const image of images) {
+        if (!imagesByListing.has(image.listingId)) {
+          imagesByListing.set(image.listingId, []);
+        }
+        imagesByListing.get(image.listingId)!.push(image);
+      }
+    }
 
-        return {
-          ...listing,
-          images,
-          isFavorited: true,
-        };
-      })
-    );
-
-    return listingsWithImages as ListingWithDetails[];
+    return favoriteListings.map((listing: any) => ({
+      ...listing,
+      images: imagesByListing.get(listing.id) ?? [],
+      isFavorited: true,
+    })) as ListingWithDetails[];
   }
 
   // Analytics operations

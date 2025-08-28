@@ -1,9 +1,13 @@
 import OpenAI from "openai";
+import { logger } from "./vite";
 
 // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
-const openai = new OpenAI({ 
-  apiKey: process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY_ENV_VAR || "default_key"
-});
+const apiKey =
+  process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY_ENV_VAR;
+if (!apiKey) {
+  throw new Error("OPENAI_API_KEY is required");
+}
+const openai = new OpenAI({ apiKey });
 
 export interface ModerationResult {
   approved: boolean;
@@ -69,7 +73,7 @@ Respond with JSON in this format:
       category: result.category || 'unknown',
     };
   } catch (error) {
-    console.error("Failed to moderate listing:", error);
+    logger.error({ err: error }, "Failed to moderate listing");
     // In case of API failure, err on the side of caution and require manual review
     return {
       approved: false,
@@ -130,7 +134,7 @@ export async function moderateImages(base64Images: string[]): Promise<Moderation
       category: result.category || 'unknown',
     };
   } catch (error) {
-    console.error("Failed to moderate images:", error);
+    logger.error({ err: error }, "Failed to moderate images");
     return {
       approved: false,
       confidence: 0,
