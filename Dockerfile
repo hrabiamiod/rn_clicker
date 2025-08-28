@@ -21,6 +21,8 @@ RUN npm ci --only=production && npm cache clean --force
 FROM base AS builder
 COPY . .
 RUN npm ci
+
+# Zbuduj backend
 RUN npm run build
 
 # 🚀 Stage: Runner - Finalny obraz produkcyjny
@@ -33,7 +35,7 @@ RUN adduser --system --uid 1001 nextjs
 
 # Kopiuj zbudowaną aplikację
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/client/dist ./client/dist
+COPY --from=builder /app/client ./client
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/shared ./shared
