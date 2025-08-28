@@ -22,6 +22,9 @@ import {
 import { db } from "./db";
 import { eq, desc, asc, and, or, like, sql, count, gte } from "drizzle-orm";
 
+export type NewListing = InsertListing &
+  Partial<Pick<Listing, "isApproved" | "moderationStatus" | "moderationNotes" | "publishedAt">>;
+
 export interface IStorage {
   // User operations (mandatory for Replit Auth)
   getUser(id: string): Promise<User | undefined>;
@@ -48,7 +51,7 @@ export interface IStorage {
   }): Promise<ListingWithDetails[]>;
   getListing(id: number): Promise<ListingWithDetails | undefined>;
   getListingsByUser(userId: string): Promise<ListingWithDetails[]>;
-  createListing(listing: InsertListing): Promise<Listing>;
+  createListing(listing: NewListing): Promise<Listing>;
   updateListing(id: number, userId: string, updates: Partial<Listing>): Promise<Listing | undefined>;
   deleteListing(id: number, userId: string): Promise<boolean>;
   incrementViewCount(id: number): Promise<void>;
@@ -160,7 +163,7 @@ export class DatabaseStorage implements IStorage {
     userId?: string;
     isApproved?: boolean;
   }): Promise<ListingWithDetails[]> {
-    let query = db
+    let query: any = db
       .select({
         id: listings.id,
         userId: listings.userId,
@@ -192,7 +195,7 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(categories, eq(listings.categoryId, categories.id))
       .leftJoin(users, eq(listings.userId, users.id));
 
-    const conditions = [];
+    const conditions: any[] = [];
 
     if (filters.userId) {
       conditions.push(eq(listings.userId, filters.userId));
@@ -259,7 +262,7 @@ export class DatabaseStorage implements IStorage {
 
     // Fetch images for each listing
     const listingsWithImages = await Promise.all(
-      results.map(async (listing) => {
+      results.map(async (listing: any) => {
         const images = await db
           .select()
           .from(listingImages)
@@ -328,7 +331,7 @@ export class DatabaseStorage implements IStorage {
     return this.getListings({ userId, isApproved: false });
   }
 
-  async createListing(listing: InsertListing): Promise<Listing> {
+  async createListing(listing: NewListing): Promise<Listing> {
     const [newListing] = await db
       .insert(listings)
       .values(listing)
@@ -447,11 +450,11 @@ export class DatabaseStorage implements IStorage {
 
     // Fetch images for each listing
     const listingsWithImages = await Promise.all(
-      favoriteListings.map(async (listing) => {
+      favoriteListings.map(async (listing: any) => {
         const images = await db
           .select()
           .from(listingImages)
-          .where(eq(listingImages.listingId, listing.id))
+          .where(eq(listingImages.listingId, listing.id!))
           .orderBy(listingImages.sortOrder);
 
         return {

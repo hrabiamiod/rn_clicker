@@ -42,19 +42,19 @@ export default function Dashboard() {
   const queryClient = useQueryClient();
   const [showAddModal, setShowAddModal] = useState(false);
 
-  const { data: myListings, isLoading: listingsLoading } = useQuery({
+  const { data: myListings, isLoading: listingsLoading } = useQuery<ListingWithDetails[]>({
     queryKey: ['/api/listings/me'],
     enabled: !!user,
   });
 
-  const { data: favorites, isLoading: favoritesLoading } = useQuery({
+  const { data: favorites, isLoading: favoritesLoading } = useQuery<ListingWithDetails[]>({
     queryKey: ['/api/favorites'],
     enabled: !!user,
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (listingId: number) => 
-      apiRequest(`/api/listings/${listingId}`, { method: 'DELETE' }),
+    mutationFn: (listingId: number) =>
+      apiRequest('DELETE', `/api/listings/${listingId}`),
     onSuccess: () => {
       toast({
         title: 'Ogłoszenie usunięte',

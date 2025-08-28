@@ -30,13 +30,13 @@ export default function ListingDetail() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: listing, isLoading, error } = useQuery({
+  const { data: listing, isLoading, error } = useQuery<ListingWithDetails>({
     queryKey: ['/api/listings', id],
     enabled: !!id,
   });
 
   const favoriteMutation = useMutation({
-    mutationFn: () => apiRequest(`/api/listings/${id}/favorite`, { method: 'POST' }),
+    mutationFn: () => apiRequest('POST', `/api/listings/${id}/favorite`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/listings', id] });
       toast({
@@ -280,7 +280,7 @@ export default function ListingDetail() {
                 <div className="flex items-center space-x-1">
                   <Calendar className="h-4 w-4" />
                   <span>
-                    {formatDistanceToNow(new Date(listing.createdAt), {
+                    {formatDistanceToNow(new Date(listing.createdAt!), {
                       addSuffix: true,
                       locale: pl,
                     })}
